@@ -54,7 +54,6 @@ export default function NaughtyButton({
       ref={btnRef}
       //className="transition-transform duration-300 bg-pink-400 text-white font-bold py-1 px-2 text-sm rounded-md"
       className="transition-transform duration-300 bg-pink-400 text-white font-bold py-2 px-4 text-sm rounded-md w-20"
-    
 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
