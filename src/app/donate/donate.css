@@ -1,0 +1,1489 @@
+
+:root {
+  --crimson: #8b1a1a;
+}
+
+/* ─── RESET & BASE ─── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #080502;
+  font-family: 'Noto Serif TC', serif;
+}
+
+
+/* ═══════════════════════════════════════════
+   SCENE — unified full-width layout
+   overview.png is the background, objects
+   are positioned as % of the full canvas.
+═══════════════════════════════════════════ */
+/*
+  SCENE LAYOUT STRATEGY
+  ─────────────────────
+  All artwork is 1536×1017. We lock the scene to this exact ratio so that
+  percentage-based object positions ALWAYS match the background pixel-perfectly,
+  regardless of viewport size or zoom level.
+
+  • Body/html fills the viewport.
+  • .scene is a centred box that is as large as possible while keeping 1536:1017.
+  • .scene-canvas is 100%×100% of .scene — everything is positioned inside it.
+  • overflow:hidden on body clips anything that sticks out.
+*/
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.scene {
+  /* Keep 1536:1017 — fit inside viewport without distortion */
+  position: relative;
+  width: 100vw;
+  height: calc(100vw * 1017 / 1536);
+  max-height: 100vh;
+  max-width: calc(100vh * 1536 / 1017);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Background — bookshelf only, no book residue */
+.scene-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.scene-bg-img {
+  width: 100%; height: 100%;
+  object-fit: fill;   /* exact fill — no crop, no letterbox */
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Object layer — same 100%×100% coordinate space */
+.scene-objects {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Individual positioned object */
+.scene-obj {
+  position: absolute;
+  pointer-events: none;
+}
+.scene-obj img {
+  width: 100%; height: 100%;
+  object-fit: fill;
+  display: block;
+  user-select: none;
+}
+
+/* Books are clickable */
+.book-obj {
+  pointer-events: all;
+  cursor: pointer;
+  will-change: transform, filter;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.35s ease;
+  transform-origin: bottom center;
+}
+
+/*
+  HIT AREA 修正：
+  書背（spine）在每本書圖片的左側約 40% 範圍。
+  用 clip-path 把 pointer-events 限縮到書脊區域，
+  讓滑鼠真正碰到書脊才觸發 hover，不是空白區域。
+  注意：clip-path 不影響視覺，只影響事件偵測。
+*/
+.book-obj {
+  /* pointer-events 作用範圍 = 左側 50% 寬（書脊 + 書身前半） */
+  /* 書背在右側：hit area 收縮到右側 55%（左側 45% 是書頁，不觸發） */
+  clip-path: inset(0 0 0 45%);
+}
+
+.book-obj:hover {
+  clip-path: none;
+  transform: translateY(-12px) scaleX(1.04) scaleY(1.02);
+  z-index: 100;
+  /* 細邊緣輪廓光：只有 1px 左右的金色線條感，不擴散 */
+  /* 調低亮度 + 極細邊緣線（0.5px offset，金色低不透明） */
+  filter:
+    brightness(1.06)
+    drop-shadow(0 6px 5px rgba(0,0,0,0.75))
+    drop-shadow(0  0.5px 0 rgba(220,175,60,0.7))
+    drop-shadow(0 -0.5px 0 rgba(220,175,60,0.6))
+    drop-shadow(0.5px 0   0 rgba(200,155,50,0.55))
+    drop-shadow(-0.5px 0  0 rgba(200,155,50,0.55));
+}
+
+.book-obj img {
+  filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));
+}
+
+/* Tooltip — 全域跟隨滑鼠版本，由 JS 控制 */
+.scene-tooltip { display: none; } /* 原地 tooltip 全部隱藏 */
+
+#cursor-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgba(8,5,2,0.95);
+  border: 1px solid rgba(180,130,40,0.4);
+  border-radius: 3px;
+  padding: 0.2rem 0.6rem;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: rgba(240,220,170,0.9);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  transform: translate(14px, -50%);
+}
+#cursor-tooltip.visible { opacity: 1; }
+
+
+/* ─── 羽毛筆 (obj-pen) ─── */
+#obj-pen {
+  z-index: 8;
+  cursor: pointer;
+  pointer-events: all;
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+/* 金額欄位被竄改時的視覺效果 */
+.amount-strike {
+  text-decoration: line-through;
+  color: rgba(140, 60, 60, 0.7) !important;
+  transition: color 0.1s;
+}
+.amount-new {
+  color: #8b1a1a !important;
+  background: rgba(255, 220, 100, 0.35) !important;
+  box-shadow: 0 0 8px rgba(255, 180, 0, 0.4);
+  transition: all 0.3s ease;
+}
+#obj-pen img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+#obj-pen:hover {
+  transform: translateY(-4px) rotate(-3deg) scale(1.04);
+  filter:
+    brightness(1.15)
+    drop-shadow(0 6px 5px rgba(0,0,0,0.6))
+    drop-shadow(0  0.5px 0 rgba(240,190,70,0.8))
+    drop-shadow(0 -0.5px 0 rgba(240,190,70,0.7))
+    drop-shadow(0.5px 0   0 rgba(220,165,50,0.65))
+    drop-shadow(-0.5px 0  0 rgba(220,165,50,0.65));
+}
+#obj-pen-shadow {
+  pointer-events: none;
+  z-index: 7;
+}
+@keyframes penFlyTo {
+  0%   { transform: translate(0,0) rotate(0deg);   opacity: 1; }
+  40%  { transform: translate(calc(var(--fly-x)*0.55), calc(var(--fly-y)*0.55)) rotate(-15deg); opacity: 1; }
+  70%  { transform: translate(var(--fly-x), var(--fly-y)) rotate(-25deg); opacity: 0.85; }
+  85%  { transform: translate(var(--fly-x), var(--fly-y)) rotate(-20deg) scale(0.9); opacity: 0.6; }
+  100% { transform: translate(0,0) rotate(0deg);   opacity: 1; }
+}
+#obj-pen.pen-flying {
+  animation: penFlyTo 2.2s cubic-bezier(0.4,0,0.2,1) forwards;
+  pointer-events: none;
+}
+
+/* ─── LAMP MIST OVERLAY ─── */
+#lampOverlay {
+  position: fixed; inset: 0;
+  z-index: 600;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4,3,1,0);
+  pointer-events: none;
+  transition: background 0.7s ease;
+}
+#lampOverlay.active {
+  background: rgba(4,3,1,0.88);
+  pointer-events: all;
+}
+
+#lampMist {
+  position: relative;
+  width: min(520px, 90vw);
+  min-height: 320px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.88);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34,1.2,0.64,1);
+  padding: 3rem 2.5rem;
+}
+#lampOverlay.active #lampMist {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 迷霧暈 */
+#lampMist::before {
+  content: '';
+  position: absolute; inset: -20px;
+  background: radial-gradient(ellipse at 50% 60%,
+    rgba(255,160,40,0.12) 0%,
+    rgba(255,120,20,0.06) 40%,
+    transparent 70%);
+  pointer-events: none;
+}
+
+#lampMistClose {
+  position: absolute; top: 0.5rem; right: 0.8rem;
+  color: rgba(240,220,170,0.4); font-size: 1rem;
+  cursor: pointer; font-family: serif;
+  transition: color 0.2s;
+}
+#lampMistClose:hover { color: rgba(240,220,170,0.9); }
+
+/* 剪影佔位（之後可換成 img） */
+#lampMistSilhouette {
+  width: 120px; height: 120px;
+  margin-bottom: 1.8rem;
+  background: radial-gradient(ellipse at 50% 40%,
+    rgba(255,180,60,0.18) 0%, transparent 70%);
+  border-radius: 50%;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3.5rem;
+  filter: drop-shadow(0 0 18px rgba(255,150,30,0.4));
+  animation: lampMistPulse 3s ease-in-out infinite alternate;
+}
+#lampMistSilhouette::after {
+  content: '🏮';
+  animation: lampMistSway 4s ease-in-out infinite alternate;
+  display: block;
+}
+@keyframes lampMistPulse {
+  0%   { filter: drop-shadow(0 0 10px rgba(255,150,30,0.3)) brightness(0.85); }
+  100% { filter: drop-shadow(0 0 28px rgba(255,180,50,0.6)) brightness(1.1); }
+}
+@keyframes lampMistSway {
+  0%   { transform: rotate(-4deg); }
+  100% { transform: rotate(4deg); }
+}
+
+#lampMistTitle {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.1rem;
+  color: rgba(240,215,150,0.9);
+  letter-spacing: 0.15em;
+  margin-bottom: 1.2rem;
+  text-shadow: 0 0 20px rgba(255,160,40,0.5);
+}
+
+/* 散架文字區 */
+#lampMistScatter {
+  min-height: 3.5rem;
+  margin-bottom: 1rem;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  cursor: default;
+  user-select: none;
+}
+/* 每個散架字元 */
+.scatter-char {
+  display: inline-block;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(220,195,130,0.75);
+  transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1),
+              opacity  0.3s ease;
+  will-change: transform;
+  white-space: pre;
+}
+
+/* 飄散字詞容器 — 覆蓋整個視窗 */
+#lampMistWords {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 810;   /* 在 lampOverlay(600) 之外，不受其 stacking context 限制 */
+}
+/* 每個飄散詞 */
+.mist-word {
+  position: absolute;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: rgba(240,210,140,0.9);
+  text-shadow: 0 0 10px rgba(255,160,40,0.6);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: mistFloat var(--dur, 5s) ease-out forwards;
+}
+@keyframes mistFloat {
+  0%   { opacity: 0;   transform: translateY(0)      scale(0.7); filter: blur(4px); }
+  12%  { opacity: 0.9; transform: translateY(-30px)  scale(1);   filter: blur(0); }
+  70%  { opacity: 0.6; transform: translateY(-200px) scale(1.05); filter: blur(1px); }
+  100% { opacity: 0;   transform: translateY(-380px) scale(0.85) translateX(var(--dx,0px)); filter: blur(6px); }
+}
+
+/* 輸入區 */
+#lampMistInputWrap {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1.4rem;
+  width: 100%;
+  max-width: 320px;
+}
+#lampMistInput {
+  flex: 1;
+  background: rgba(255,250,235,0.08);
+  border: 1px solid rgba(200,168,76,0.3);
+  border-radius: 3px;
+  padding: 0.45rem 0.8rem;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(240,215,150,0.9);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+#lampMistInput::placeholder {
+  color: rgba(200,168,76,0.35);
+  font-style: italic;
+}
+#lampMistInput:focus {
+  border-color: rgba(200,168,76,0.6);
+  background: rgba(255,250,235,0.12);
+}
+#lampMistSend {
+  background: rgba(200,168,76,0.15);
+  border: 1px solid rgba(200,168,76,0.4);
+  border-radius: 3px;
+  color: rgba(240,215,150,0.85);
+  font-size: 1rem;
+  width: 34px; height: 34px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+#lampMistSend:hover {
+  background: rgba(200,168,76,0.3);
+}
+
+/* 提燈：z-index 高於 form-overlay(5)，確保可點擊 */
+#obj-lamp {
+  cursor: pointer;
+  pointer-events: all;
+  z-index: 8;
+  transition: filter 0.35s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  transform-origin: bottom center;
+}
+#obj-lamp:hover {
+  transform: translateY(-6px) scale(1.03);
+  z-index: 20;
+}
+#obj-lamp:hover img {
+  animation: none !important;
+  /* 邊緣輪廓光 + 浮起陰影，跟書本風格一致 */
+  filter:
+    brightness(1.18)
+    drop-shadow(0 8px 6px rgba(0,0,0,0.75))
+    drop-shadow(0  0.5px 0 rgba(240,190,70,0.8))
+    drop-shadow(0 -0.5px 0 rgba(240,190,70,0.7))
+    drop-shadow(0.5px 0   0 rgba(220,165,50,0.65))
+    drop-shadow(-0.5px 0  0 rgba(220,165,50,0.65));
+}
+
+/* 點擊縮進效果 */
+@keyframes sceneShrink {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.96) translateY(8px); }
+  100% { transform: scale(1); }
+}
+.scene.lamp-click {
+  animation: sceneShrink 0.5s ease forwards;
+}
+
+/* Lamp glow */
+#obj-lamp img {
+  animation: lampGlow 3s ease-in-out infinite alternate;
+}
+@keyframes lampGlow {
+  0%   { filter: brightness(0.9) drop-shadow(0 0 6px rgba(255,160,40,0.2)); }
+  100% { filter: brightness(1.1) drop-shadow(0 0 18px rgba(255,180,60,0.5)); }
+}
+
+/* Form overlay — right 55% of the scene, slightly larger */
+.form-overlay {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 57%;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;   /* 靠上對齊，收合後停在上方 */
+  justify-content: center;
+  padding: 1.8rem 2rem 1.2rem 0;  /* 上方留空讓表單不貼頂 */
+  pointer-events: none;
+}
+.form-overlay > * {
+  pointer-events: all;
+}
+
+/* ═══════════════════════════════════════════
+   RIGHT — PARCHMENT FORM SIDE
+═══════════════════════════════════════════ */
+.form-side {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 3rem 2rem 2rem;
+  background:
+    radial-gradient(ellipse at 30% 50%, rgba(255,160,50,0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 80%, rgba(255,120,30,0.05) 0%, transparent 40%),
+    linear-gradient(135deg, #120a03 0%, #0d0803 50%, #08050 100%);
+  overflow: hidden;
+}
+
+/* Ambient light from candle left */
+.form-side::before {
+  content: '';
+  position: absolute;
+  left: -60px; top: 20%; bottom: 20%;
+  width: 200px;
+  background: radial-gradient(ellipse at left, rgba(255,160,50,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* TABLE SURFACE */
+.table-surface {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 38%;
+  background: linear-gradient(180deg,
+    #2a1508 0%,
+    #1e0e04 30%,
+    #160a02 100%
+  );
+  overflow: hidden;
+}
+.table-surface::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(180,120,40,0.4) 20%,
+    rgba(220,160,60,0.5) 50%,
+    rgba(180,120,40,0.4) 80%,
+    transparent
+  );
+}
+/* Wood grain lines */
+.table-surface::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 40px,
+    rgba(0,0,0,0.1) 41px,
+    transparent 42px
+  );
+}
+
+/* PARCHMENT */
+.parchment-wrap {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: clamp(300px, 40vh, 520px);
+  overflow: visible;
+}
+
+.parchment {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 30%, #f5e8c0 0%, #edda9e 40%, #e0c878 70%, #d4b860 100%);
+  border-radius: 3px;
+  padding: 2.4rem 1.8rem 2rem;
+  box-shadow:
+    0 0 0 1px rgba(120,90,30,0.3),
+    0 20px 60px rgba(0,0,0,0.8),
+    0 8px 20px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,250,220,0.5),
+    inset 0 -2px 4px rgba(100,60,10,0.2);
+  border-radius: 4px;
+  /* clip-path 移除：它會裁切溢出的逃跑按鈕，改用 border-radius */
+  overflow: visible;  /* 讓按鈕可以逃出羊皮紙範圍 */
+}
+
+/* Parchment texture overlay */
+.parchment::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+
+/* Parchment stain patches */
+.parchment::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 20%, rgba(160,100,20,0.08) 0%, transparent 35%),
+    radial-gradient(ellipse at 85% 70%, rgba(140,90,15,0.06) 0%, transparent 30%),
+    radial-gradient(ellipse at 50% 90%, rgba(120,80,10,0.05) 0%, transparent 25%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Parchment roll shadow on edges */
+.parchment-shadow-top,
+.parchment-shadow-bot {
+  position: absolute;
+  left: 0; right: 0;
+  height: 20px;
+  pointer-events: none;
+  z-index: 20;
+  border-radius: 3px;
+}
+.parchment-shadow-top {
+  top: 0;
+  background: linear-gradient(180deg, rgba(100,60,10,0.25) 0%, transparent 100%);
+}
+.parchment-shadow-bot {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(100,60,10,0.2) 0%, transparent 100%);
+}
+
+/* Decorative top ornament */
+.parchment-ornament {
+  text-align: center;
+  margin-bottom: 1.2rem;
+  position: relative;
+  z-index: 5;
+}
+.ornament-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ornament-line::before,
+.ornament-line::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(100,60,10,0.4), transparent);
+}
+.ornament-text {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: rgba(100,60,10,0.6);
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+.ornament-glyph {
+  font-size: 1.1rem;
+  color: rgba(140,90,20,0.5);
+  line-height: 1;
+}
+
+/* FORM ELEMENTS */
+.form-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.05rem;
+  color: #3a2008;
+  text-align: center;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  position: relative; z-index: 5;
+}
+.form-subtitle {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(60,30,5,0.55);
+  margin-bottom: 1rem;
+  position: relative; z-index: 5;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative; z-index: 5;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.field-label {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: rgba(60,30,5,0.65);
+  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.field-label .req {
+  color: var(--crimson);
+  font-style: normal;
+  font-size: 0.65rem;
+}
+.field-label .label-glyph {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.field-input,
+.field-textarea {
+  background: rgba(255,250,235,0.45);
+  border: 1px solid rgba(100,65,15,0.3);
+  border-bottom: 2px solid rgba(100,65,15,0.4);
+  border-radius: 2px;
+  padding: 0.4rem 0.6rem;
+  font-family: 'IM Fell English', serif;
+  font-size: 0.95rem;
+  color: #2a1405;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: rgba(100,65,15,0.35);
+  font-style: italic;
+}
+.field-input:focus,
+.field-textarea:focus {
+  border-color: rgba(140,90,20,0.6);
+  background: rgba(255,252,240,0.65);
+  box-shadow: 0 2px 8px rgba(140,90,20,0.12), inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Amount row with currency prefix */
+.amount-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.amount-prefix {
+  background: rgba(100,65,15,0.12);
+  border: 1px solid rgba(100,65,15,0.3);
+  border-right: none;
+  border-bottom: 2px solid rgba(100,65,15,0.4);
+  border-radius: 2px 0 0 2px;
+  padding: 0.55rem 0.65rem;
+  font-family: 'IM Fell English', serif;
+  font-size: 0.8rem;
+  color: rgba(60,30,5,0.6);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.amount-row .field-input {
+  border-radius: 0 2px 2px 0;
+  flex: 1;
+}
+
+.field-textarea {
+  resize: none;
+  min-height: 54px;
+  line-height: 1.5;
+}
+
+/* Preset amounts */
+.amount-presets {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+.preset-chip {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  padding: 0.18rem 0.55rem;
+  border: 1px solid rgba(100,65,15,0.25);
+  border-radius: 2px;
+  color: rgba(60,30,5,0.55);
+  background: rgba(255,250,235,0.3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preset-chip:hover {
+  border-color: rgba(100,65,15,0.5);
+  background: rgba(255,245,210,0.6);
+  color: rgba(40,20,5,0.8);
+}
+
+/* SUBMIT AREA */
+.submit-area {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  position: relative; z-index: 5;
+  overflow: visible;
+}
+
+.submit-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: -0.2rem;
+}
+.submit-divider::before,
+.submit-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(100,65,15,0.25), transparent);
+}
+.submit-divider-glyph {
+  font-size: 0.65rem;
+  color: rgba(100,65,15,0.3);
+  letter-spacing: 0.3em;
+}
+
+/* The main seal/submit button */
+.btn-submit {
+  position: relative;
+  background: linear-gradient(135deg, #6b1a0a 0%, #8a2210 40%, #7a1c0c 100%);
+  color: #f0dca8;
+  border: none;
+  padding: 0.75rem 2.8rem;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 3px;
+  box-shadow:
+    0 4px 12px rgba(100,20,5,0.5),
+    0 2px 4px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,200,100,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+.btn-submit::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,200,100,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-submit::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(200,150,50,0.25);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+
+/* YouTube login section */
+.yt-section {
+  position: relative; z-index: 5;
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(100,65,15,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+.yt-label {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(60,30,5,0.45);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.btn-yt {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(0,0,0,0.08);
+  border: 1px solid rgba(100,65,15,0.25);
+  border-radius: 2px;
+  padding: 0.45rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-yt:hover {
+  background: rgba(0,0,0,0.15);
+  border-color: rgba(100,65,15,0.45);
+}
+.yt-icon {
+  width: 18px; height: 18px;
+  background: #c00;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.yt-icon::after {
+  content: '';
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 7px;
+  border-color: transparent transparent transparent #fff;
+  margin-left: 1px;
+}
+.yt-text {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: rgba(40,20,5,0.65);
+}
+
+
+/* ─── LAMP & URN (right side, absolute positioned matching PNG canvas) ─── */
+/* The lamp and urn PNGs are also full 1536x1017 canvases.
+   We place them as absolute overlays on .form-side using the same trick. */
+.desk-lamp, .desk-urn {
+  position: absolute;
+  /* Cover entire form-side so PNG positions stay correct */
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.desk-lamp img, .desk-urn img {
+  width: 100%; height: 100%;
+  object-fit: fill;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+/* Lamp gets a gentle glow pulse */
+.desk-lamp img {
+  animation: lampGlow 3s ease-in-out infinite alternate;
+}
+@keyframes lampGlow {
+  0%   { filter: brightness(0.95) drop-shadow(0 0 8px rgba(255,160,40,0.3)); }
+  100% { filter: brightness(1.05) drop-shadow(0 0 20px rgba(255,180,60,0.5)); }
+}
+
+/* ─── INK BOTTLE + QUILL DECO ─── */
+.desk-items {
+  position: absolute;
+  right: 3.2rem;
+  bottom: calc(38% - 2px);
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  z-index: 20;
+  transform: translateY(-2px);
+}
+
+/* Ink bottle */
+.ink-bottle {
+  position: relative;
+  width: 28px;
+}
+.ink-body {
+  width: 22px;
+  height: 30px;
+  background: linear-gradient(135deg, #0a0a1a 0%, #141428 50%, #0a0a14 100%);
+  border-radius: 3px 3px 4px 4px;
+  margin: 0 auto;
+  border: 1px solid rgba(80,80,120,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.ink-body::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60%;
+  background: linear-gradient(180deg, transparent, rgba(60,60,180,0.25));
+}
+.ink-body::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 3px;
+  width: 5px; height: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  transform: rotate(-10deg);
+}
+.ink-neck {
+  width: 12px;
+  height: 8px;
+  background: linear-gradient(90deg, #0a0a18, #14142a, #0a0a18);
+  margin: 0 auto;
+  border-radius: 1px;
+  border: 1px solid rgba(80,80,120,0.3);
+  border-bottom: none;
+}
+.ink-cap {
+  width: 16px;
+  height: 6px;
+  background: linear-gradient(90deg, #1a1a3a, #2a2a50, #1a1a3a);
+  margin: 0 auto;
+  border-radius: 2px 2px 0 0;
+  border: 1px solid rgba(100,100,160,0.4);
+}
+
+/* Quill pen */
+.quill {
+  position: relative;
+  width: 12px;
+  height: 80px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  transform-origin: bottom center;
+}
+.quill:hover {
+  transform: rotate(-8deg) translateY(-4px);
+}
+.quill-shaft {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 55px;
+  background: linear-gradient(180deg, #8a6030 0%, #6a4820 50%, #4a3010 100%);
+  border-radius: 1px;
+}
+.quill-nib {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 8px solid #2a1808;
+}
+.quill-barbs {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 65px;
+}
+/* Left barbs */
+.quill-barbs::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 14px;
+  height: 60px;
+  background: linear-gradient(135deg,
+    rgba(240,230,200,0.9) 0%,
+    rgba(220,210,180,0.7) 30%,
+    rgba(200,190,160,0.5) 60%,
+    transparent 100%
+  );
+  clip-path: polygon(100% 100%, 0% 60%, 15% 0%, 100% 30%);
+  transform-origin: right bottom;
+  transform: rotate(8deg);
+}
+/* Right barbs */
+.quill-barbs::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 14px;
+  height: 60px;
+  background: linear-gradient(225deg,
+    rgba(255,248,220,0.9) 0%,
+    rgba(235,225,195,0.7) 30%,
+    rgba(215,205,175,0.5) 60%,
+    transparent 100%
+  );
+  clip-path: polygon(0% 100%, 100% 60%, 85% 0%, 0% 30%);
+  transform-origin: left bottom;
+  transform: rotate(-8deg);
+}
+
+/* Quill tooltip hint */
+.quill-hint {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  background: rgba(10,8,3,0.9);
+  border: 1px solid rgba(200,168,76,0.3);
+  border-radius: 3px;
+  padding: 0.3rem 0.6rem;
+  white-space: nowrap;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.62rem;
+  color: rgba(245,230,200,0.8);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.quill-hint::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(200,168,76,0.3);
+}
+.quill:hover .quill-hint {
+  opacity: 1;
+}
+
+/* ─── FLOATING PARTICLES on right side ─── */
+.ember {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: rgba(255,180,60,0.8);
+  pointer-events: none;
+  animation: floatEmber linear infinite;
+}
+@keyframes floatEmber {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 0.5; }
+  100% { transform: translate(var(--dx), -120px); opacity: 0; }
+}
+
+/* ─── BOOK TOOLTIP ─── */
+.book-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8,5,2,0.95);
+  border: 1px solid rgba(180,130,40,0.3);
+  border-radius: 3px;
+  padding: 0.3rem 0.6rem;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.62rem;
+  color: rgba(240,220,170,0.85);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+.book:hover .book-tooltip { opacity: 1; }
+
+/* ─── CANDLE GLOW OVERLAY on right ─── */
+.glow-overlay {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at -5% 45%, rgba(255,150,40,0.07) 0%, transparent 45%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── ESCAPE BUTTON ─── */
+
+/* Zone: holds layout space, never moves */
+.btn-submit-zone {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+/* Ghost imprint — dashed outline stays in place */
+.btn-ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(100,65,15,0.28);
+  border-radius: 3px;
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.7rem;
+  color: rgba(100,65,15,0.32);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  user-select: none;
+}
+.btn-ghost.visible { opacity: 1; }
+
+/*
+  CARRIER div — this is what moves.
+  CSS transition slides it smoothly after each JS jump.
+  Same pattern as 鱈魚's .content with transition + cubic-bezier.
+*/
+.btn-carrier {
+  position: fixed;          /* 脫離一切父元素 clip/overflow */
+  left: 0; top: 0;          /* JS 用 transform 定位 */
+  transition: transform 0.6s cubic-bezier(0.04, 0.43, 0.025, 1.07),
+              opacity  0.5s cubic-bezier(0.4,0,0.2,1);
+  z-index: 9000;
+  cursor: not-allowed;
+  opacity: 1;
+}
+.btn-carrier.valid-mode {
+  cursor: pointer;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+  JELLY div — wraps button, plays squash-stretch on each jump.
+  key counter forces re-trigger (same trick as 鱈魚's :key="counter").
+*/
+.btn-jelly {
+  animation: jellyBounce 0.6s forwards;
+  animation-play-state: paused; /* paused by default, JS adds .active */
+}
+.btn-jelly.bouncing {
+  animation-play-state: running;
+}
+
+@keyframes jellyBounce {
+  0%, 100% { transform: scale(1, 1); }
+  30%       { transform: scale(1.08, 0.94); }
+  55%       { transform: scale(0.96, 1.05); }
+  75%       { transform: scale(1.02, 0.98); }
+  90%       { transform: scale(0.99, 1.01); }
+}
+
+/* 撞到邊界時更誇張的壓扁 */
+.btn-jelly.bounce-hard {
+  animation-name: jellyBounceHard;
+}
+@keyframes jellyBounceHard {
+  0%         { transform: scale(1, 1); }
+  20%        { transform: scale(1.15, 0.87); }
+  45%        { transform: scale(0.93, 1.09); }
+  65%        { transform: scale(1.05, 0.97); }
+  82%        { transform: scale(0.98, 1.02); }
+  100%       { transform: scale(1, 1); }
+}
+
+/* The actual button */
+.btn-submit {
+  position: relative;
+  background: linear-gradient(135deg, #6b1a0a 0%, #8a2210 40%, #7a1c0c 100%);
+  color: #f0dca8;
+  border: none;
+  padding: 0.75rem 2.8rem;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: inherit;
+  border-radius: 3px;
+  box-shadow:
+    0 4px 14px rgba(100,20,5,0.55),
+    0 2px 4px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,200,100,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  overflow: hidden;
+  white-space: nowrap;
+  display: block;
+}
+.btn-submit::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,200,100,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-submit::after {
+  content: '';
+  position: absolute; inset: 1px;
+  border: 1px solid rgba(200,150,50,0.2);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Valid state */
+.btn-carrier.valid-mode .btn-submit {
+  background: linear-gradient(135deg, #3a5a08 0%, #4e780e 40%, #3a5a08 100%);
+  box-shadow:
+    0 0 20px rgba(80,160,20,0.4),
+    0 4px 12px rgba(10,40,5,0.5),
+    inset 0 1px 0 rgba(180,255,80,0.2);
+}
+.btn-carrier.valid-mode:hover .btn-submit {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+.btn-carrier.valid-mode:active .btn-submit { transform: translateY(0); }
+
+/* Rune flash */
+@keyframes runePop {
+  0%   { opacity:0; transform:translate(-50%,-50%) scale(0.4) rotate(-20deg); }
+  20%  { opacity:1; transform:translate(-50%,-50%) scale(1.2) rotate(6deg); }
+  75%  { opacity:0.65; }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(1.4) rotate(12deg); }
+}
+.rune-flash {
+  position: fixed;
+  font-size: 1.25rem;
+  color: rgba(200,80,20,0.8);
+  pointer-events: none;
+  animation: runePop 0.5s ease forwards;
+  z-index: 9999;
+  user-select: none;
+  transform: translate(-50%,-50%);
+}
+
+/* Input error shake */
+@keyframes inputShake {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-6px); }
+  35%     { transform: translateX(5px); }
+  55%     { transform: translateX(-4px); }
+  75%     { transform: translateX(3px); }
+  90%     { transform: translateX(-1px); }
+}
+.field-input.error,
+.field-textarea.error {
+  border-color: rgba(180,50,20,0.65) !important;
+  background: rgba(255,238,232,0.6) !important;
+  animation: inputShake 0.42s ease;
+}
+.field-label.error-label { color: rgba(150,40,10,0.85) !important; }
+
+/* ─── MAGIC PARTICLES ─── */
+#particleCanvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ─── BLESSING OVERLAY ─── */
+#blessingOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0);
+  pointer-events: none;
+  transition: background 0.5s ease;
+}
+#blessingOverlay.active {
+  background: rgba(0,0,0,0.55);
+  pointer-events: all;
+}
+
+/* 撕裂紙片效果 */
+#blessingScroll {
+  position: relative;
+  background: #f0dca8;
+  padding: 2.8rem 3rem 2.4rem;
+  max-width: 420px;
+  width: 88%;
+  text-align: center;
+  transform: translateY(40px) scale(0.88) rotate(-1.5deg);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1),
+              opacity 0.4s ease;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.7),
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,250,220,0.6);
+  /* 撕裂邊緣 via clip-path */
+  clip-path: polygon(
+    0% 2%, 2% 0%, 5% 1.5%, 8% 0.5%, 12% 2%, 16% 0%,
+    20% 1.8%, 25% 0.3%, 30% 1.5%, 35% 0%, 40% 2%,
+    45% 0.5%, 50% 1.8%, 55% 0%, 60% 1.5%, 65% 0.8%,
+    70% 2%, 75% 0.3%, 80% 1.5%, 85% 0%, 90% 1.8%,
+    95% 0.5%, 98% 2%, 100% 1%,
+    100% 98%, 98% 100%, 95% 98.5%, 90% 100%, 85% 98%,
+    80% 100%, 75% 98.5%, 70% 100%, 65% 98%, 60% 100%,
+    55% 98.5%, 50% 100%, 45% 98%, 40% 100%, 35% 98.5%,
+    30% 100%, 25% 98%, 20% 100%, 15% 98.5%, 10% 100%,
+    5% 98%, 2% 100%, 0% 98%
+  );
+}
+#blessingOverlay.active #blessingScroll {
+  transform: translateY(0) scale(1) rotate(-0.8deg);
+  opacity: 1;
+}
+
+#blessingClose {
+  position: absolute;
+  top: 0.7rem; right: 1rem;
+  font-size: 0.9rem;
+  color: rgba(60,30,5,0.4);
+  cursor: pointer;
+  font-family: serif;
+  transition: color 0.2s;
+}
+#blessingClose:hover { color: rgba(60,30,5,0.8); }
+
+#blessingRune {
+  font-size: 2rem;
+  color: rgba(100,60,10,0.35);
+  margin-bottom: 0.8rem;
+  animation: runeFloat 3s ease-in-out infinite alternate;
+}
+@keyframes runeFloat {
+  0%   { transform: translateY(0) rotate(-5deg); }
+  100% { transform: translateY(-4px) rotate(5deg); }
+}
+
+#blessingText {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: #3a2008;
+  margin-bottom: 1rem;
+  min-height: 3em;
+}
+
+#blessingAuthor {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.6rem;
+  color: rgba(100,60,10,0.45);
+  letter-spacing: 0.2em;
+}
+
+/* 羊皮紙內容區「收折」動畫
+   做法：把 .fields / .submit-area / .yt-section 收起（max-height→0）
+   保留 ornament + title + subtitle 常態顯示，讓提示文字可見 */
+.parchment-body {
+  overflow: hidden;
+  max-height: 600px;
+  transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1),
+              opacity    0.4s ease;
+  opacity: 1;
+}
+.parchment-wrap.rolled .parchment-body {
+  max-height: 0;
+  opacity: 0;
+}
+/* 收折時 parchment 本身縮小底部 padding */
+.parchment {
+  transition: padding-bottom 0.45s ease;
+}
+.parchment-wrap.rolled .parchment {
+  padding-bottom: 0.8rem;
+}
+/*
+  每個 field-group 改成 position:relative，
+  在 input/textarea 上疊一層透明的 .glitch-overlay div，
+  用來顯示亂碼文字（不影響原本 input 的互動）。
+*/
+.glitch-wrap {
+  position: relative;
+}
+.glitch-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 0.4rem 0.6rem;         /* 對齊 field-input 的 padding */
+  font-family: 'IM Fell English', serif;
+  font-size: 0.95rem;
+  color: #2a1405;
+  pointer-events: none;           /* 不擋住 input 互動 */
+  overflow: hidden;
+  white-space: pre;
+  letter-spacing: normal;
+  line-height: 1.5;
+  border-radius: 2px;
+  /* 亂碼字元用不同顏色強調 */
+}
+/* 亂碼狀態的字元 */
+.glitch-char {
+  display: inline-block;
+  color: var(--crimson, #7a1a0f);
+  opacity: 0;
+  animation: glitchFade 0.28s ease forwards;
+}
+@keyframes glitchFade {
+  0%   { opacity: 1; transform: skewX(-8deg) scaleY(1.1); color: #8b1a0f; }
+  40%  { opacity: 0.9; transform: skewX(4deg) scaleY(0.95); color: #c04020; }
+  100% { opacity: 0; transform: skewX(0deg) scaleY(1); }
+}
+/* 已定型的字元（正常顏色） */
+.settled-char {
+  display: inline-block;
+  color: #2a1405;
+}
+/* amount input：glitch-wrap 已經是 prefix 右邊的 flex item，
+   overlay 的 inset:0 就是正確位置，不需要額外 left offset */
+.amount-row .glitch-overlay {
+  left: 0;   /* 覆寫 inset:0 就夠了，移除之前錯誤的 44px */
+}
+/* 羊皮紙頂部提示 — 常態顯示，hover 加深 */
+.parchment-top-hint {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(60,30,5,0.35);
+  text-align: center;
+  margin-top: 0.25rem;
+  transition: color 0.2s ease, opacity 0.2s;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+.parchment-ornament {
+  cursor: pointer;
+}
+.parchment-ornament:hover .parchment-top-hint {
+  color: rgba(60,30,5,0.75);
+}
+/* 收折狀態下，提示文字改成「▼ 展開表單」 */
+.parchment-wrap.rolled .parchment-top-hint::before {
+  content: '▼ 展開表單';
+}
+.parchment-wrap:not(.rolled) .parchment-top-hint::before {
+  content: '▲ 收起表單';
+}
+/* hint span 本身文字設空，由 ::before 控制 */
+#parchmentTopHint { font-size: 0; }
+#parchmentTopHint::before { font-size: 0.68rem; }
+
+@media (max-width: 760px) {
+  .scene {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45% 55%;
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+  html, body { overflow: auto; }
+  .form-side { padding: 1.5rem; }
+  .desk-items { right: 1.5rem; }
+  .table-surface { height: 30%; }
+}
