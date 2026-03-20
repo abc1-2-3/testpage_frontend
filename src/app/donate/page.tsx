@@ -750,6 +750,8 @@ export default function DonatePage() {
       penObj.style.setProperty('--fly-x', flyX + 'px');
       penObj.style.setProperty('--fly-y', flyY + 'px');
       penObj.classList.add('pen-flying');
+      const penShadow = document.getElementById('obj-pen-shadow');
+      if (penShadow) { penShadow.style.transition = 'opacity 0.3s ease'; penShadow.style.opacity = '0'; }
     
       // 飛到金額欄後，竄改數字
       setTimeout(() => {
@@ -780,7 +782,8 @@ export default function DonatePage() {
         penObj.classList.remove('pen-flying');
         penObj.style.removeProperty('--fly-x');
         penObj.style.removeProperty('--fly-y');
-        // 如果表單是收合的，展開它
+        const penShadowBack = document.getElementById('obj-pen-shadow');
+        if (penShadowBack) { penShadowBack.style.opacity = '1'; }
         if (formCollapsed) toggleForm();
         penBusy = false;
       }, 2200);
@@ -809,8 +812,108 @@ export default function DonatePage() {
     
     
 
+    /* ════════════════════════════════════════════
+       桌上書本 — 規則說明卡
+    ════════════════════════════════════════════ */
+    const bookOpenObj     = document.getElementById('obj-bookopen');
+    const infoCardOverlay = document.getElementById('infoCardOverlay');
+    const infoCardClose   = document.getElementById('infoCardClose');
+
+    function openInfoCard() {
+      infoCardOverlay.classList.add('active');
+    }
+    function closeInfoCard() {
+      infoCardOverlay.classList.remove('active');
+    }
+
+    bookOpenObj.addEventListener('click', openInfoCard);
+    infoCardClose.addEventListener('click', closeInfoCard);
+    infoCardOverlay.addEventListener('click', (e) => {
+      if (e.target === infoCardOverlay) closeInfoCard();
+    });
+
+    /* ════════════════════════════════════════════
+       骷髏互動
+    ════════════════════════════════════════════ */
+    const skeletonObj = document.getElementById('obj-skeleton2-2');
+    const SKELETON_JOKES = [
+      '嘎～你終於看到我了。',
+      '我在這守了三百年，你有什麼資格打擾？',
+      '…（空洞的眼神凝視著你）',
+      '那些書？都是我生前沒讀完的。',
+      '你知道嗎，孤單比死亡更可怕。',
+      '哼，又來一個好奇的人類。',
+      '我已經忘記自己的名字了，但我記得每一本書。',
+    ];
+    skeletonObj.addEventListener('click', () => {
+      const joke = SKELETON_JOKES[Math.floor(Math.random() * SKELETON_JOKES.length)];
+      cursorTip.textContent = joke;
+      cursorTip.classList.add('visible');
+      setTimeout(() => cursorTip.classList.remove('visible'), 2800);
+    });
+    skeletonObj.addEventListener('mouseenter', () => {
+      cursorTip.textContent = '守護者';
+      cursorTip.classList.add('visible');
+    });
+    skeletonObj.addEventListener('mouseleave', () => {
+      cursorTip.classList.remove('visible');
+    });
+
+    /* ════════════════════════════════════════════
+       香爐互動 — 煙霧粒子
+    ════════════════════════════════════════════ */
+    const urnObj = document.getElementById('obj-urn');
+    let urnSmokeInterval = null;
+
+    function spawnSmoke() {
+      const r = urnObj.getBoundingClientRect();
+      const particle = document.createElement('div');
+      particle.className = 'smoke-particle';
+      const dx = (Math.random() - 0.5) * 50;
+      const dur = 2.2 + Math.random() * 1.5;
+      const size = 14 + Math.random() * 14;
+      particle.style.cssText = `
+        left:${r.left + r.width * 0.5 - size / 2}px;
+        top:${r.top + r.height * 0.12}px;
+        width:${size}px; height:${size}px;
+        --smoke-dx:${dx}px; --smoke-dur:${dur}s;
+      `;
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), dur * 1000 + 200);
+    }
+
+    urnObj.addEventListener('mouseenter', () => {
+      cursorTip.textContent = '香爐';
+      cursorTip.classList.add('visible');
+      spawnSmoke();
+      urnSmokeInterval = setInterval(spawnSmoke, 380);
+    });
+    urnObj.addEventListener('mouseleave', () => {
+      cursorTip.classList.remove('visible');
+      if (urnSmokeInterval) { clearInterval(urnSmokeInterval); urnSmokeInterval = null; }
+    });
+
+    const INCENSE_MSGS = [
+      '香火嫋嫋，願你所求皆如願。',
+      '煙霧中，有人在聆聽你的心願。',
+      '此香已燃，誠意上達天聽。',
+      '迷霧散去，祝福留存。',
+      '深吸一口氣，讓心靜下來。',
+    ];
+    urnObj.addEventListener('click', () => {
+      const msg = INCENSE_MSGS[Math.floor(Math.random() * INCENSE_MSGS.length)];
+      const r = urnObj.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'mist-word';
+      el.textContent = msg;
+      el.style.cssText = `left:${r.left + r.width / 2}px; top:${r.top}px; font-size:0.9rem; --dur:4s; --dx:0px;`;
+      document.getElementById('lampMistWords').appendChild(el);
+      setTimeout(() => el.remove(), 4300);
+    });
+
     return () => {
       if (typeof _animId !== 'undefined') cancelAnimationFrame(_animId);
+      if (urnSmokeInterval) clearInterval(urnSmokeInterval);
     };
   }, []);
 
@@ -925,11 +1028,19 @@ export default function DonatePage() {
             <img src="/assets/lower-tome.png" alt="下層典籍" />
             <div className="scene-tooltip">下層典籍</div>
           </div>
-          <div className="scene-obj deco-obj"  id="obj-lamp" style={{left: '53.91%', top: '41.99%', width: '14.91%', height: '35.79%'}}>
+          {/* 提燈陰影（在提燈下層） */}
+          <div className="scene-obj deco-obj" id="obj-lamp-shadow" style={{left: '55.2%', top: '45.5%', width: '12.5%', height: '30%'}}>
+            <img src="/assets/lantern-shadow.png" alt="" />
+          </div>
+          <div className="scene-obj deco-obj"  id="obj-lamp" style={{left: '51.8%', top: '43.5%', width: '14.91%', height: '35.79%'}}>
             <img src="/assets/lantern.png" alt="提燈" />
             <div className="scene-tooltip">提燈</div>
           </div>
-          <div className="scene-obj deco-obj"  id="obj-urn" style={{left: '36.46%', top: '42.38%', width: '6.90%', height: '27.93%'}}>
+          {/* 香爐煙霧（在香爐上層，無互動） */}
+          <div className="scene-obj deco-obj" id="obj-incense-smoke" style={{left: '32%', top: '22%', width: '12%', height: '18%'}}>
+            <img src="/assets/incense-burner-smoke.png" alt="" />
+          </div>
+          <div className="scene-obj deco-obj"  id="obj-urn" style={{left: '31.5%', top: '37%', width: '15%', height: '44%'}}>
             <img src="/assets/incense-burner.png" alt="香爐" />
             <div className="scene-tooltip">香爐</div>
           </div>
@@ -945,7 +1056,7 @@ export default function DonatePage() {
             <div className="scene-tooltip">羽毛筆</div>
           </div>
           
-          <div className="scene-obj deco-obj" id="obj-bookopen" style={{left: '40.30%', top: '75.32%', width: '33.85%', height: '18.09%'}}>
+          <div className="scene-obj deco-obj" id="obj-bookopen" style={{left: '40.30%', top: '75.32%', width: '33.85%', height: '18.09%', cursor: 'pointer', pointerEvents: 'all', zIndex: 20}}>
             <img src="/assets/open-book.png" alt="攤開的書" />
           </div>
       
@@ -1063,6 +1174,47 @@ export default function DonatePage() {
         
         </div>
       
+      </div>
+
+      {/* 書本說明卡 */}
+      <div id="infoCardOverlay">
+        <div id="infoCard">
+          <svg className="info-corner tl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 20 L0 0 L20 0" /></svg>
+          <svg className="info-corner tr" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 0 L30 0 L30 20" /></svg>
+          <svg className="info-corner bl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 10 L0 30 L20 30" /></svg>
+          <svg className="info-corner br" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 30 L30 30 L30 10" /></svg>
+          <div id="infoCardClose">✕</div>
+          <div id="infoCardContent">
+            <div className="info-card-title">書房奇談 ── 規則書</div>
+            <div className="info-card-subtitle">本書房的規則，知道的人不多…</div>
+            <ul className="info-card-list">
+              <li><span className="info-glyph">✦</span> <strong>書架上的書</strong> ── 輕觸書脊可得一句祝福</li>
+              <li><span className="info-glyph">✦</span> <strong>提燈</strong> ── 點擊可開啟迷霧空間，向霧中投入文字</li>
+              <li><span className="info-glyph">✦</span> <strong>羽毛筆</strong> ── 請勿輕易點擊，它有自己的打算</li>
+              <li><span className="info-glyph">✦</span> <strong>守護者</strong> ── 守在這裡很久了，偶爾願意說話</li>
+              <li><span className="info-glyph">✦</span> <strong>香爐</strong> ── 靠近可聞得煙香，點擊傳遞心意</li>
+            </ul>
+            <div className="info-card-divider"></div>
+            <div className="info-card-footer">
+              <p>連結 YouTube 帳號以累積贊助足跡，並查閱歷次贊助紀錄。</p>
+              <p className="info-card-contact">問題與委託：<a href="mailto:wuyan1234yyy@gmail.com">wuyan1234yyy@gmail.com</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 社群圖示 */}
+      <div className="social-icons">
+        <a className="social-icon-btn" href="https://x.com/wuyan4411" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+        <a className="social-icon-btn" href="https://www.youtube.com/@%E5%90%B3%E8%A8%80-o9q" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+        </a>
       </div>
     </>
   );

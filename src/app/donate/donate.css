@@ -509,7 +509,7 @@ html, body {
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: clamp(300px, 40vh, 520px);
+  max-width: clamp(340px, 30vw, 580px);
   overflow: visible;
 }
 
@@ -1486,4 +1486,292 @@ html, body {
   .form-side { padding: 1.5rem; }
   .desk-items { right: 1.5rem; }
   .table-surface { height: 30%; }
+}
+
+/* ─── 書本說明卡（CardFuturistic 風格） ─── */
+#infoCardOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: rgba(2, 1, 0, 0);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.45s ease;
+}
+#infoCardOverlay.active {
+  background: rgba(2, 1, 0, 0.82);
+  pointer-events: all;
+}
+
+#infoCard {
+  position: relative;
+  width: min(500px, 90vw);
+  padding: 2.6rem 2.4rem 2.2rem;
+  background: rgba(5, 3, 1, 0.94);
+  border: 1px solid rgba(180, 138, 40, 0);
+  font-family: 'IM Fell English', serif;
+  opacity: 0;
+  transform: scale(0.94);
+  transition:
+    opacity    0.32s ease 0.38s,
+    transform  0.32s ease 0.38s,
+    border-color 0.35s ease 0.28s;
+}
+#infoCardOverlay.active #infoCard {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(180, 138, 40, 0.35);
+}
+
+/* 頂部橫線（border 拉開動畫） */
+#infoCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 18px; right: 18px;
+  height: 1px;
+  background: rgba(180, 138, 40, 0.5);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease 0.22s;
+}
+#infoCardOverlay.active #infoCard::before {
+  transform: scaleX(1);
+}
+
+/* 四角 SVG 轉角線 */
+.info-corner {
+  position: absolute;
+  width: 22px; height: 22px;
+}
+.info-corner path {
+  fill: none;
+  stroke: rgba(200, 158, 50, 0.85);
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  transition: stroke-dashoffset 0.38s ease;
+}
+#infoCardOverlay.active .info-corner path { stroke-dashoffset: 0; }
+.info-corner.tl { top: -1px;  left: -1px;  }
+.info-corner.tr { top: -1px;  right: -1px; transform: scaleX(-1); }
+.info-corner.bl { bottom: -1px; left: -1px;  transform: scaleY(-1); }
+.info-corner.br { bottom: -1px; right: -1px; transform: scale(-1); }
+.info-corner.tl path { transition-delay: 0.02s; }
+.info-corner.tr path { transition-delay: 0.08s; }
+.info-corner.bl path { transition-delay: 0.12s; }
+.info-corner.br path { transition-delay: 0.16s; }
+
+/* 關閉按鈕 */
+#infoCardClose {
+  position: absolute;
+  top: 0.5rem; right: 0.8rem;
+  color: rgba(200, 168, 76, 0.4);
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: serif;
+  transition: color 0.2s;
+}
+#infoCardClose:hover { color: rgba(240, 215, 150, 0.9); }
+
+/* 卡片內容 */
+#infoCardContent {
+  opacity: 0;
+  transition: opacity 0.3s ease 0.5s;
+}
+#infoCardOverlay.active #infoCardContent { opacity: 1; }
+
+.info-card-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.95rem;
+  color: rgba(230, 205, 130, 0.95);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 0 16px rgba(200, 150, 40, 0.4);
+}
+.info-card-subtitle {
+  font-style: italic;
+  font-size: 0.78rem;
+  color: rgba(180, 150, 80, 0.6);
+  margin-bottom: 1.4rem;
+}
+.info-card-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  font-size: 0.88rem;
+  color: rgba(215, 190, 120, 0.85);
+  line-height: 1.5;
+}
+.info-card-list strong { color: rgba(235, 210, 140, 1); }
+.info-glyph {
+  color: rgba(200, 158, 50, 0.7);
+  margin-right: 0.3rem;
+}
+.info-card-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(180, 138, 40, 0.35), transparent);
+  margin: 1.3rem 0;
+}
+.info-card-footer {
+  font-size: 0.78rem;
+  color: rgba(170, 145, 80, 0.65);
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  line-height: 1.55;
+}
+.info-card-contact a {
+  color: rgba(200, 168, 76, 0.75);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.info-card-contact a:hover { color: rgba(240, 215, 150, 1); }
+
+/* ─── 2K 羊皮紙縮放 ─── */
+@media (min-height: 1150px) {
+  .parchment-wrap { max-width: clamp(400px, 28vw, 620px); }
+  .parchment { padding: 3rem 2.4rem 2.8rem; }
+  .form-title    { font-size: 1.3rem; }
+  .form-subtitle { font-size: 0.95rem; }
+  .fields        { gap: 1.2rem; }
+  .field-label   { font-size: 0.95rem; }
+  .field-input,
+  .field-textarea { font-size: 1.1rem; padding: 0.58rem 0.8rem; }
+  .amount-prefix  { font-size: 0.95rem; }
+  .btn-submit     { font-size: 1.05rem; padding: 0.7rem 1.5rem; }
+}
+
+/* ─── 社群圖示 ─── */
+.social-icons {
+  position: fixed;
+  bottom: 1.4rem;
+  right: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  z-index: 200;
+}
+.social-icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(8, 5, 2, 0.82);
+  border: 1px solid rgba(200, 168, 76, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: rgba(220, 190, 110, 0.75);
+  transition: background 0.2s, border-color 0.2s, transform 0.2s, color 0.2s;
+}
+.social-icon-btn:hover {
+  background: rgba(20, 12, 4, 0.95);
+  border-color: rgba(200, 168, 76, 0.7);
+  transform: scale(1.12);
+  color: rgba(240, 215, 150, 1);
+}
+.social-icon-btn svg {
+  width: 15px; height: 15px;
+  fill: currentColor;
+}
+
+/* ─── 骷髏互動 ─── */
+#obj-skeleton2-2 {
+  cursor: pointer;
+  pointer-events: all;
+}
+@keyframes skeletonRattle {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  15%       { transform: rotate(-5deg) translateX(-4px); }
+  30%       { transform: rotate(4deg) translateX(4px); }
+  50%       { transform: rotate(-3deg) translateX(-3px); }
+  70%       { transform: rotate(3deg) translateX(2px); }
+  85%       { transform: rotate(-2deg) translateX(-1px); }
+}
+#obj-skeleton2-2:hover {
+  animation: skeletonRattle 0.55s ease infinite;
+  filter: brightness(1.2) drop-shadow(0 0 10px rgba(160, 220, 160, 0.35));
+}
+
+/* ─── 提燈陰影 ─── */
+#obj-lamp-shadow {
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0.55;
+}
+#obj-lamp-shadow img {
+  object-fit: contain !important;
+}
+
+/* ─── 香爐煙霧圖 ─── */
+#obj-incense-smoke {
+  pointer-events: none;
+  z-index: 3;
+}
+#obj-incense-smoke img {
+  object-fit: contain !important;
+}
+
+/* 修正提燈和香爐圖片不變形 */
+#obj-lamp img,
+#obj-urn img {
+  object-fit: contain !important;
+}
+@keyframes incenseSmokeFloat {
+  0%   { transform: translateX(0)   translateY(0)   ; opacity: 0.55; }
+  25%  { transform: translateX(-5px) translateY(-6px); opacity: 0.75; }
+  50%  { transform: translateX(4px)  translateY(-3px); opacity: 0.5;  }
+  75%  { transform: translateX(-3px) translateY(-8px); opacity: 0.7;  }
+  100% { transform: translateX(0)   translateY(0)   ; opacity: 0.55; }
+}
+#obj-incense-smoke img {
+  animation: incenseSmokeFloat 5s ease-in-out infinite;
+  filter: blur(0.5px);
+}
+
+/* ─── 香爐互動 ─── */
+#obj-urn {
+  cursor: pointer;
+  pointer-events: all;
+  transition: filter 0.3s ease;
+}
+#obj-urn:hover {
+  filter: brightness(1.12) drop-shadow(0 0 10px rgba(255, 160, 40, 0.4));
+}
+@keyframes smokeRise {
+  0%   { transform: translateY(0) translateX(0) scale(0.5);  opacity: 0.65; filter: blur(3px); }
+  40%  { opacity: 0.38; }
+  100% { transform: translateY(-85px) translateX(var(--smoke-dx, 8px)) scale(2.8); opacity: 0; filter: blur(10px); }
+}
+.smoke-particle {
+  position: fixed;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(215, 195, 155, 0.5) 0%, rgba(170, 150, 110, 0.18) 55%, transparent 70%);
+  pointer-events: none;
+  z-index: 110;
+  animation: smokeRise var(--smoke-dur, 2.5s) ease-out forwards;
+}
+
+/* ─── 大螢幕 (2K+) 羊皮紙縮放 ─── */
+@media (min-height: 1200px) {
+  .parchment-wrap {
+    max-width: clamp(440px, 28vw, 680px);
+  }
+  .parchment {
+    padding: 3.5rem 2.6rem 3.2rem;
+  }
+  .form-title    { font-size: 1.4rem; }
+  .form-subtitle { font-size: 1rem; }
+  .fields        { gap: 1.3rem; }
+  .field-label   { font-size: 1rem; }
+  .field-input,
+  .field-textarea { font-size: 1.15rem; padding: 0.62rem 0.85rem; }
+  .amount-prefix { font-size: 1rem; }
+  .btn-submit    { font-size: 1.08rem; padding: 0.72rem 1.5rem; }
+  .yt-label      { font-size: 0.9rem; }
 }
