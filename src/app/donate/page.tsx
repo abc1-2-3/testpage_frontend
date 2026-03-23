@@ -818,12 +818,87 @@ export default function DonatePage() {
     const bookOpenObj     = document.getElementById('obj-bookopen');
     const infoCardOverlay = document.getElementById('infoCardOverlay');
     const infoCardClose   = document.getElementById('infoCardClose');
+    const infoCornerWrap  = document.getElementById('infoCornerWrap');
+
+    // path 元素（描線用）
+    const cornerEls = {
+      tl: infoCardOverlay.querySelector('.info-corner.tl path'),
+      tr: infoCardOverlay.querySelector('.info-corner.tr path'),
+      bl: infoCardOverlay.querySelector('.info-corner.bl path'),
+      br: infoCardOverlay.querySelector('.info-corner.br path'),
+    };
+    const infoContent = document.getElementById('infoCardContent');
+
+    function cancelWaapi(el) {
+      if (!el) return;
+      el.getAnimations().forEach(a => a.cancel());
+    }
 
     function openInfoCard() {
       infoCardOverlay.classList.add('active');
+
+      // ── wrapper scale(0→1)：四角從中心同時散開 ──
+      cancelWaapi(infoCornerWrap);
+      infoCornerWrap.animate(
+        [{ transform: 'scale(0)' }, { transform: 'scale(1)' }],
+        { duration: 400, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
+      );
+
+      // ── 角落描線：角落展開後開始畫 ──
+      Object.values(cornerEls).forEach(path => {
+        if (!path) return;
+        cancelWaapi(path);
+        path.setAttribute('stroke-dashoffset', '44');
+        path.animate(
+          [{ strokeDashoffset: '44' }, { strokeDashoffset: '0' }],
+          { duration: 300, delay: 350, easing: 'ease', fill: 'forwards' }
+        );
+      });
+
+      // ── 內容閃爍淡入 ──
+      if (infoContent) {
+        cancelWaapi(infoContent);
+        infoContent.animate(
+          [
+            { opacity: 0 },
+            { opacity: 0.08 },
+            { opacity: 0.75 },
+            { opacity: 0.25 },
+            { opacity: 1 },
+          ],
+          { duration: 280, delay: 720, easing: 'steps(4, end)', fill: 'forwards' }
+        );
+      }
     }
+
     function closeInfoCard() {
-      infoCardOverlay.classList.remove('active');
+      // ── 內容退場 ──
+      if (infoContent) {
+        cancelWaapi(infoContent);
+        infoContent.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 140, easing: 'ease', fill: 'forwards' }
+        );
+      }
+
+      // ── 描線退場 ──
+      Object.values(cornerEls).forEach(path => {
+        if (!path) return;
+        cancelWaapi(path);
+        path.animate(
+          [{ strokeDashoffset: '0' }, { strokeDashoffset: '44' }],
+          { duration: 160, easing: 'ease-in', fill: 'forwards' }
+        );
+      });
+
+      // ── wrapper scale(1→0)：四角往中心收攏 ──
+      cancelWaapi(infoCornerWrap);
+      infoCornerWrap.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(0)' }],
+        { duration: 300, delay: 60, easing: 'cubic-bezier(0.64, 0, 0.78, 0)', fill: 'forwards' }
+      );
+
+      requestAnimationFrame(() => infoCardOverlay.classList.remove('active'));
     }
 
     bookOpenObj.addEventListener('click', openInfoCard);
@@ -1179,10 +1254,12 @@ export default function DonatePage() {
       {/* 書本說明卡 */}
       <div id="infoCardOverlay">
         <div id="infoCard">
-          <svg className="info-corner tl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 20 L0 0 L20 0" /></svg>
-          <svg className="info-corner tr" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 0 L30 0 L30 20" /></svg>
-          <svg className="info-corner bl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 10 L0 30 L20 30" /></svg>
-          <svg className="info-corner br" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 30 L30 30 L30 10" /></svg>
+          <div id="infoCornerWrap">
+            <svg className="info-corner tl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 20 L0 0 L20 0" strokeDasharray="44" strokeDashoffset="44" /></svg>
+            <svg className="info-corner tr" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 0 L30 0 L30 20" strokeDasharray="44" strokeDashoffset="44" /></svg>
+            <svg className="info-corner bl" viewBox="0 0 30 30" aria-hidden="true"><path d="M0 10 L0 30 L20 30" strokeDasharray="44" strokeDashoffset="44" /></svg>
+            <svg className="info-corner br" viewBox="0 0 30 30" aria-hidden="true"><path d="M10 30 L30 30 L30 10" strokeDasharray="44" strokeDashoffset="44" /></svg>
+          </div>
           <div id="infoCardClose">✕</div>
           <div id="infoCardContent">
             <div className="info-card-title">書房奇談 ── 規則書</div>
