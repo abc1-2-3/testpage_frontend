@@ -14,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link
           href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=IM+Fell+English:ital@0;1&family=Noto+Serif+TC:wght@300;400;500;700&display=swap"
           rel="stylesheet"

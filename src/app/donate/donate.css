@@ -1484,18 +1484,97 @@ html, body {
 #parchmentTopHint { font-size: 0; }
 #parchmentTopHint::before { font-size: 0.68rem; }
 
-@media (max-width: 760px) {
-  .scene {
-    grid-template-columns: 1fr;
-    grid-template-rows: 45% 55%;
+/* ═══════════════════════════════════════════
+   MOBILE PORTRAIT — form-only mode
+   手機直向：隱藏裝飾物件，表單全寬可捲動
+   手機橫向：原始等比縮放 CSS 自然處理，不另覆蓋
+═══════════════════════════════════════════ */
+@media (max-width: 760px) and (orientation: portrait) {
+  /* body 改直向堆疊，scene 上方、社群 icon 下方自然流動 */
+  html, body {
     height: auto;
-    min-height: 100vh;
-    overflow: auto;
+    min-height: 100%;
+    overflow-y: auto;
+    align-items: center;
+    flex-direction: column;
   }
+
+  .scene {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    max-width: none;
+    min-height: 100svh;   /* svh = Safari 可見區（含底部導覽列）*/
+    overflow: visible;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  /* 背景圖固定鋪滿全螢幕，降低透明度讓表單易讀 */
+  .scene-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .scene-bg-img {
+    object-fit: cover;
+    object-position: 35% 45%;
+    opacity: 0.42;
+  }
+
+  /* 隱藏所有裝飾物件（.scene-objects 內的物件 + 獨立掛出的 .deco-obj） */
+  .scene-objects,
+  .deco-obj { display: none; }
+
+  /* 表單容器：改為相對定位、全寬、隨內容增高 */
+  .form-overlay {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+    padding: 2rem 1rem 2rem;
+    pointer-events: all;
+    align-items: flex-start;
+  }
+
+  /* 羊皮紙：全寬，移除 clamp 下限限制 */
+  .parchment-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* 社群 icon：脫離 fixed，改為文件流 — 在 scene 下方自然出現
+     完全迴避 iOS Safari 導覽列遮擋的問題                     */
+  .social-icons {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    flex-direction: row;
+    gap: 1rem;
+    padding: 1.2rem 0 calc(1.4rem + env(safe-area-inset-bottom, 1rem));
+    z-index: 200;
+    flex-shrink: 0;
+  }
+  .social-icon-btn {
+    width: 44px;
+    height: 44px;
+    border-color: rgba(200, 168, 76, 0.5);
+    background: rgba(8, 5, 2, 0.92);
+  }
+  .social-icon-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* 手機橫向小螢幕：原始等比縮放 OK，確保羊皮紙不溢出且可捲動 */
+@media (max-height: 500px) and (orientation: landscape) {
   html, body { overflow: auto; }
-  .form-side { padding: 1.5rem; }
-  .desk-items { right: 1.5rem; }
-  .table-surface { height: 30%; }
+  .parchment-wrap { max-width: 100%; }
 }
 
 /* ─── 書本說明卡（CardFuturistic 風格） ─── */

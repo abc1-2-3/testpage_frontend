@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  devIndicators: false,   // 關閉開發模式的 N 圓圈 indicator
 };
 
 export default nextConfig;

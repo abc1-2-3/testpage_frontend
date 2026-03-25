@@ -1,0 +1,234 @@
+/* ─── RESET ─── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #080502;
+  font-family: 'Noto Serif TC', serif;
+  overflow: hidden;
+}
+
+/* ─── PARTICLE CANVAS ─── */
+#particleCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── PAGE WRAPPER ─── */
+.result-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+/* ═══════════════════════════════════════
+   CARD
+═══════════════════════════════════════ */
+.result-card {
+  background: rgba(10, 6, 2, 0.93);
+  border: 1px solid rgba(180, 130, 40, 0.22);
+  border-radius: 3px;
+  padding: 3rem 2.8rem 2.5rem;
+  width: min(480px, 92vw);
+  text-align: center;
+  position: relative;
+  animation: cardIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  backdrop-filter: blur(3px);
+}
+
+/* 成功：金色光暈 */
+.result-card.success {
+  border-color: rgba(220, 175, 60, 0.42);
+  box-shadow:
+    0 0 50px rgba(220, 175, 60, 0.07),
+    0 0 120px rgba(220, 175, 60, 0.04),
+    inset 0 0 50px rgba(220, 175, 60, 0.025);
+}
+
+/* 失敗：暗紅光暈 */
+.result-card.failure {
+  border-color: rgba(139, 26, 26, 0.52);
+  box-shadow:
+    0 0 50px rgba(139, 26, 26, 0.10),
+    0 0 120px rgba(139, 26, 26, 0.06),
+    inset 0 0 50px rgba(139, 26, 26, 0.04);
+}
+
+/* 四角裝飾 */
+.result-card::before,
+.result-card::after {
+  content: '✦';
+  position: absolute;
+  font-size: 0.55rem;
+  color: rgba(220, 175, 60, 0.35);
+  line-height: 1;
+}
+.result-card::before { top: 0.55rem; left:  0.75rem; }
+.result-card::after  { top: 0.55rem; right: 0.75rem; }
+
+.result-card.failure::before,
+.result-card.failure::after {
+  color: rgba(139, 26, 26, 0.45);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: scale(0.91) translateY(14px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* ─── SEAL ─── */
+.result-seal {
+  font-family: 'IM Fell English', serif;
+  font-size: 2rem;
+  color: rgba(220, 175, 60, 0.82);
+  margin-bottom: 0.9rem;
+  animation: sealGlow 3s ease-in-out infinite alternate;
+}
+
+.failure .result-seal {
+  color: rgba(180, 70, 70, 0.85);
+  animation: sealGlowRed 3s ease-in-out infinite alternate;
+}
+
+@keyframes sealGlow {
+  from { filter: drop-shadow(0 0  5px rgba(220,175,60,0.25)); }
+  to   { filter: drop-shadow(0 0 16px rgba(220,175,60,0.65)); }
+}
+@keyframes sealGlowRed {
+  from { filter: drop-shadow(0 0  5px rgba(180,60,60,0.25)); }
+  to   { filter: drop-shadow(0 0 16px rgba(180,60,60,0.60)); }
+}
+
+/* ─── TITLE ─── */
+.result-title {
+  font-size: 1.55rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: rgba(240, 220, 170, 0.92);
+  margin-bottom: 0.2rem;
+}
+
+.failure .result-title {
+  color: rgba(210, 150, 150, 0.90);
+}
+
+/* ─── AMOUNT ─── */
+.result-amount {
+  font-size: 2.4rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(240, 220, 170, 0.96);
+  margin: 1rem 0 0.25rem;
+  font-family: 'Cinzel Decorative', serif;
+}
+
+.failure .result-amount {
+  color: rgba(200, 140, 140, 0.80);
+}
+
+/* ─── RTN MSG ─── */
+.result-msg {
+  font-size: 0.78rem;
+  color: rgba(190, 155, 95, 0.58);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
+}
+
+/* ─── DIVIDER ─── */
+.result-divider {
+  width: 78%;
+  height: 1px;
+  margin: 1.6rem auto 1.4rem;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(180, 130, 40, 0.28),
+    transparent
+  );
+}
+
+.failure .result-divider {
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(139, 26, 26, 0.30),
+    transparent
+  );
+}
+
+/* ─── DETAILS ─── */
+.result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-bottom: 2rem;
+  text-align: left;
+  list-style: none;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.8rem;
+  font-size: 0.80rem;
+}
+
+.result-label {
+  color: rgba(175, 135, 60, 0.68);
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.result-value {
+  color: rgba(228, 208, 158, 0.85);
+  text-align: right;
+  word-break: break-all;
+  letter-spacing: 0.02em;
+}
+
+/* ─── BUTTON ─── */
+.result-btn {
+  display: inline-block;
+  padding: 0.62rem 2.2rem;
+  border: 1px solid rgba(180, 130, 40, 0.38);
+  border-radius: 2px;
+  color: rgba(240, 220, 170, 0.78);
+  font-family: 'Noto Serif TC', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    color        0.25s ease,
+    background   0.25s ease,
+    box-shadow   0.25s ease;
+}
+
+.result-btn:hover {
+  border-color: rgba(220, 175, 60, 0.65);
+  color: rgba(240, 220, 170, 1);
+  background: rgba(220, 175, 60, 0.06);
+  box-shadow: 0 0 18px rgba(220, 175, 60, 0.10);
+}
+
+.failure .result-btn {
+  border-color: rgba(139, 26, 26, 0.40);
+  color: rgba(210, 155, 155, 0.78);
+}
+
+.failure .result-btn:hover {
+  border-color: rgba(180, 55, 55, 0.60);
+  color: rgba(230, 175, 175, 1);
+  background: rgba(139, 26, 26, 0.07);
+  box-shadow: 0 0 18px rgba(139, 26, 26, 0.14);
+}

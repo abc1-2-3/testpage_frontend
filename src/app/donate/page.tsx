@@ -589,15 +589,25 @@ export default function DonatePage() {
     
     /* ════════════════════════════════════════════
        RESIZE
+      valid-mode：直接 snap 回 zone 中心（不產生滑動動畫）
+      escape-mode：先把 offset 夾進新邊界，再 snap（不產生滑動動畫）
+      修正：offsetX/Y === 0 時舊程式碼不呼叫 applyTransform，
+      導致視窗縮放 / F12 後按鈕停在舊 viewport 座標而跑出羊皮紙。
     ════════════════════════════════════════════ */
     window.addEventListener('resize', () => {
-      if (offsetX !== 0 || offsetY !== 0) {
-        // 視窗縮放後重新用羊皮紙邊界夾一次
+      if (!isValid() && (offsetX !== 0 || offsetY !== 0)) {
+        // 逃跑中：夾進新的羊皮紙邊界，避免縮放後找不到按鈕
         const b = getParchmentBounds();
         offsetX = Math.max(b.minX, Math.min(b.maxX, offsetX));
         offsetY = Math.max(b.minY, Math.min(b.maxY, offsetY));
-        applyTransform();
       }
+      // 無論哪種狀態，都要重新對齊 zone 中心
+      // 關掉 transition 讓按鈕直接 snap，不產生滑動視覺
+      carrier.style.transition = 'none';
+      applyTransform();
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        carrier.style.transition = '';
+      }));
     });
     
     
