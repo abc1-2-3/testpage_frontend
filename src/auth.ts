@@ -54,8 +54,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      session.token = token.backendToken ?? ""
-      session.userId = token.userId ?? ""
+      session.token = (token.backendToken as string) ?? ""
+      session.userId = (token.userId as string) ?? ""
       return session
     },
   },
