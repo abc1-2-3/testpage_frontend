@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "魔法書房 — 贊助",
   description: "贊助魔法書房，串接綠界付款",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
@@ -20,7 +22,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }

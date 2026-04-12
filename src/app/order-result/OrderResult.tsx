@@ -1,34 +1,58 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import './order-result.css';
 
-function formatPaymentType(type: string | null): string {
-  if (!type) return '—';
-  if (type.startsWith('Credit'))  return '信用卡';
-  if (type.startsWith('WebATM'))  return 'WebATM';
-  if (type.startsWith('ATM'))     return 'ATM 轉帳';
-  if (type.startsWith('CVS'))     return '超商繳費';
-  if (type.startsWith('BARCODE')) return '條碼繳費';
-  if (type.startsWith('TWQR'))    return 'TWQR 行動支付';
-  if (type.startsWith('ApplePay')) return 'Apple Pay';
-  return type;
+interface OrderStatus {
+  status: 'Paid' | 'Failed' | 'Pending';
+  amount?: number;
+  donorName?: string;
+  message?: string;
 }
 
 export default function OrderResult() {
   const params = useSearchParams();
+  const merchantTradeNo = params.get('MerchantTradeNo') ?? params.get('merchantTradeNo') ?? '';
 
-  const success         = params.get('success') === 'true';
-  const rtnMsg          = params.get('rtnMsg') ?? '';
-  const merchantTradeNo = params.get('merchantTradeNo') ?? '';
-  const tradeNo         = params.get('tradeNo') ?? '';
-  const tradeAmt        = params.get('tradeAmt') ?? '';
-  const paymentDate     = params.get('paymentDate') ?? '';
-  const paymentType     = params.get('paymentType') ?? '';
+  const [data, setData]       = useState<OrderStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
 
-  // 有帶交易參數才算有資料
-  const hasData = !!merchantTradeNo;
+  /* ── 輪詢後端訂單狀態 ── */
+  useEffect(() => {
+    if (!merchantTradeNo) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    let attempts = 0;
+    const MAX = 10;
+    let timerId: ReturnType<typeof setTimeout>;
+
+    async function poll() {
+      try {
+        const res = await fetch(`${apiUrl}/api/Ecpay/status/${merchantTradeNo}`);
+        if (!res.ok) throw new Error('fetch failed');
+        const json: OrderStatus = await res.json();
+        if (json.status === 'Pending' && attempts < MAX) {
+          attempts++;
+          timerId = setTimeout(poll, 2000);
+        } else {
+          setData(json);
+          setLoading(false);
+        }
+      } catch {
+        setError(true);
+        setLoading(false);
+      }
+    }
+
+    poll();
+    return () => clearTimeout(timerId);
+  }, [merchantTradeNo]);
 
   /* ── 粒子特效 ── */
   useEffect(() => {
@@ -86,15 +110,12 @@ export default function OrderResult() {
     };
   }, []);
 
-  const cardClass = hasData
-    ? `result-card ${success ? 'success' : 'failure'}`
-    : 'result-card';
+  /* ── 畫面 ── */
+  const success = data?.status === 'Paid';
 
-  const rows: { label: string; value: string }[] = [];
-  if (merchantTradeNo) rows.push({ label: '訂單編號', value: merchantTradeNo });
-  if (tradeNo)         rows.push({ label: '交易編號', value: tradeNo });
-  if (paymentType)     rows.push({ label: '付款方式', value: formatPaymentType(paymentType) });
-  if (paymentDate)     rows.push({ label: '付款時間', value: paymentDate });
+  const cardClass = loading || error
+    ? 'result-card'
+    : `result-card ${success ? 'success' : 'failure'}`;
 
   return (
     <>
@@ -103,48 +124,52 @@ export default function OrderResult() {
       <div className="result-page">
         <div className={cardClass}>
 
-          {/* 封印符文 */}
           <div className="result-seal">
-            {hasData && !success ? '✕' : '✦'}
+            {loading ? '…' : error ? '?' : success ? '✦' : '✕'}
           </div>
 
-          {/* 標題 */}
           <h1 className="result-title">
-            {!hasData
-              ? '找不到交易資訊'
-              : success
-                ? '付款成功'
-                : '付款未完成'}
+            {loading
+              ? '確認付款中…'
+              : error
+                ? '找不到交易資訊'
+                : success
+                  ? '付款成功'
+                  : '付款未完成'}
           </h1>
 
-          {/* 金額 */}
-          {hasData && tradeAmt && (
+          {!loading && !error && data?.amount && (
             <div className="result-amount">
-              NT$ {parseInt(tradeAmt, 10).toLocaleString()}
+              NT$ {data.amount.toLocaleString()}
             </div>
           )}
 
-          {/* 綠界回傳訊息 */}
-          {hasData && rtnMsg && (
-            <div className="result-msg">{rtnMsg}</div>
-          )}
-
-          {/* 分隔線 + 明細 */}
-          {hasData && rows.length > 0 && (
+          {!loading && !error && (
             <>
               <div className="result-divider" />
               <dl className="result-details">
-                {rows.map(r => (
-                  <div className="result-row" key={r.label}>
-                    <dt className="result-label">{r.label}</dt>
-                    <dd className="result-value">{r.value}</dd>
+                {merchantTradeNo && (
+                  <div className="result-row">
+                    <dt className="result-label">訂單編號</dt>
+                    <dd className="result-value">{merchantTradeNo}</dd>
                   </div>
-                ))}
+                )}
+                {data?.donorName && (
+                  <div className="result-row">
+                    <dt className="result-label">贊助者</dt>
+                    <dd className="result-value">{data.donorName}</dd>
+                  </div>
+                )}
+                {data?.message && (
+                  <div className="result-row">
+                    <dt className="result-label">留言</dt>
+                    <dd className="result-value">{data.message}</dd>
+                  </div>
+                )}
               </dl>
             </>
           )}
 
-          {/* 按鈕 */}
           <a href="/" className="result-btn">回到首頁</a>
         </div>
       </div>

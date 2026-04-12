@@ -1,0 +1,199 @@
+/* ─── RESET ─── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; min-height: 100%;
+  background: #080502;
+  font-family: 'Noto Serif TC', serif;
+}
+
+/* ─── PARTICLE CANVAS ─── */
+#particleCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── PAGE WRAPPER ─── */
+.donations-page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 4rem;
+}
+
+/* ─── HEADER ─── */
+.donations-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.donations-seal {
+  font-size: 1.6rem;
+  color: rgba(220, 175, 60, 0.75);
+  margin-bottom: 0.6rem;
+  animation: sealGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes sealGlow {
+  from { filter: drop-shadow(0 0  5px rgba(220,175,60,0.25)); }
+  to   { filter: drop-shadow(0 0 16px rgba(220,175,60,0.65)); }
+}
+
+.donations-title {
+  font-family: 'IM Fell English', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: rgba(240, 220, 170, 0.90);
+}
+
+/* ─── CARD CONTAINER ─── */
+.donations-container {
+  width: min(640px, 96vw);
+}
+
+/* ─── ITEM ─── */
+.donation-item {
+  background: rgba(10, 6, 2, 0.90);
+  border: 1px solid rgba(180, 130, 40, 0.20);
+  border-radius: 3px;
+  padding: 1.3rem 1.6rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.4s ease both;
+}
+
+.donation-item:hover {
+  border-color: rgba(180, 130, 40, 0.38);
+  background: rgba(14, 8, 2, 0.93);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.donation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.donation-date {
+  font-size: 0.72rem;
+  color: rgba(175, 135, 60, 0.60);
+  letter-spacing: 0.06em;
+}
+
+.donation-message {
+  font-size: 0.85rem;
+  color: rgba(228, 208, 158, 0.80);
+  letter-spacing: 0.03em;
+  max-width: 380px;
+  word-break: break-all;
+}
+
+.donation-status {
+  font-size: 0.70rem;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.donation-status.paid    { color: rgba(140, 200, 120, 0.85); border: 1px solid rgba(100, 170, 80, 0.30); }
+.donation-status.pending { color: rgba(200, 175, 100, 0.75); border: 1px solid rgba(180, 140, 60, 0.25); }
+.donation-status.failed  { color: rgba(200, 100, 100, 0.75); border: 1px solid rgba(160, 60, 60, 0.28); }
+
+.donation-amount {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.15rem;
+  color: rgba(240, 220, 170, 0.92);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── EMPTY ─── */
+.donations-empty {
+  text-align: center;
+  color: rgba(175, 135, 60, 0.50);
+  font-size: 0.90rem;
+  letter-spacing: 0.10em;
+  margin-top: 3rem;
+}
+
+/* ─── DIVIDER ─── */
+.donations-divider {
+  width: 60%;
+  height: 1px;
+  margin: 2rem auto;
+  background: linear-gradient(to right, transparent, rgba(180, 130, 40, 0.25), transparent);
+}
+
+/* ─── PAGINATION ─── */
+.donations-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+
+.page-btn {
+  background: none;
+  border: 1px solid rgba(180, 130, 40, 0.35);
+  border-radius: 2px;
+  color: rgba(240, 220, 170, 0.75);
+  font-family: 'Noto Serif TC', serif;
+  font-size: 0.80rem;
+  letter-spacing: 0.10em;
+  padding: 0.4rem 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: rgba(220, 175, 60, 0.60);
+  color: rgba(240, 220, 170, 1);
+  background: rgba(220, 175, 60, 0.05);
+}
+
+.page-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.page-info {
+  font-size: 0.78rem;
+  color: rgba(175, 135, 60, 0.55);
+  letter-spacing: 0.06em;
+}
+
+/* ─── BACK LINK ─── */
+.donations-back {
+  display: inline-block;
+  margin-top: 2.5rem;
+  padding: 0.55rem 2rem;
+  border: 1px solid rgba(180, 130, 40, 0.35);
+  border-radius: 2px;
+  color: rgba(240, 220, 170, 0.72);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  transition: border-color 0.25s, color 0.25s;
+}
+
+.donations-back:hover {
+  border-color: rgba(220, 175, 60, 0.60);
+  color: rgba(240, 220, 170, 1);
+}

@@ -1,10 +1,15 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import './donate.css';
 
 export default function DonatePage() {
+  const { data: session } = useSession();
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
   useEffect(() => {
     /* ════════════════════════════════════════════
        CURSOR TOOLTIP
@@ -330,10 +335,15 @@ export default function DonatePage() {
     function isValid() {
       const name   = inputName.value.trim();
       const amount = parseFloat(inputAmount.value);
-      return name.length > 0 && !isNaN(amount) && amount >= 30;
+      return name.length > 0 && !isNaN(amount) && amount >= 10;
     }
-    
+
+    const amountHint = document.getElementById('amountHint');
     function syncValidity() {
+      const amount = parseFloat(inputAmount.value);
+      const tooLow = !isNaN(amount) && amount < 10;
+      if (amountHint) amountHint.classList.toggle('visible', tooLow);
+
       if (isValid()) {
         carrier.classList.add('valid-mode');
         back();
@@ -363,6 +373,7 @@ export default function DonatePage() {
     function applyTransform() {
       // zone 的 viewport 中心座標（固定不動的佔位 div）
       const zone = document.getElementById('btnZone');
+      if (!zone) return;
       const zr   = zone.getBoundingClientRect();
       const zx   = zr.left + zr.width  / 2;
       const zy   = zr.top  + zr.height / 2;
@@ -558,20 +569,24 @@ export default function DonatePage() {
       btnSubmit.style.pointerEvents = 'none';
       try {
         const inputMsg = document.getElementById('inputMsg');
-        const res = await fetch('https://localhost:44333/api/Ecpay/CreateOrder', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:44333';
+        const token = sessionRef.current?.token;
+        const res = await fetch(`${apiUrl}/api/ecpay/create-order`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
-            name: inputName.value.trim(),
+            amount: parseInt(inputAmount.value, 10),
+            donorName: inputName.value.trim(),
             message: inputMsg ? inputMsg.value.trim() : '',
-            amount: parseInt(inputAmount.value, 10)
-          })
+          }),
         });
         if (!res.ok) throw new Error('Server error: ' + res.status);
-        const ecpayHtml = await res.text();
-        document.open();
-        document.write(ecpayHtml);
-        document.close();
+        const html = await res.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        window.location.href = URL.createObjectURL(blob);
       } catch (err) {
         console.error('ECPay error:', err);
         btnSubmit.innerHTML = '✦  封印並送出  ✦';
@@ -691,6 +706,10 @@ export default function DonatePage() {
       scene.classList.add('lamp-click');
       setTimeout(() => scene.classList.remove('lamp-click'), 500);
       buildScatterText(SCATTER_TEXT);
+      // 收起表單，讓逃跑按鈕一起消失
+      parchWrap.classList.add('rolled');
+      carrier.style.opacity = '0';
+      carrier.style.pointerEvents = 'none';
       lampOverlay.classList.add('active');
       setTimeout(() => lampInput.focus(), 600);
     }
@@ -700,6 +719,12 @@ export default function DonatePage() {
       lampScatter.querySelectorAll('.scatter-char').forEach(s => {
         s.style.transform = '';
       });
+      // 退出迷霧後展開表單
+      if (!formCollapsed) {
+        parchWrap.classList.remove('rolled');
+        carrier.style.opacity = '';
+        carrier.style.pointerEvents = '';
+      }
     }
     
     // 事件
@@ -1010,7 +1035,9 @@ export default function DonatePage() {
           <div id="lampMistClose">✕</div>
       
           
-          <div id="lampMistSilhouette"></div>
+          <div id="lampMistSilhouette">
+            <img src="/assets/lamp2.png" alt="提燈" />
+          </div>
       
           
           <div id="lampMistTitle">迷霧之中</div>
@@ -1194,7 +1221,7 @@ export default function DonatePage() {
                   <div className="amount-row">
                     <div className="amount-prefix">NT$</div>
                     <div className="glitch-wrap" style={{flex: '1'}}>
-                      <input className="field-input" id="inputAmount" type="number" placeholder="50" min="30" step="1" />
+                      <input className="field-input" id="inputAmount" type="number" placeholder="50" min="10" step="1" />
                       <div className="glitch-overlay" id="glitchAmount" aria-hidden="true"></div>
                     </div>
                   </div>
@@ -1205,6 +1232,7 @@ export default function DonatePage() {
                     <span className="preset-chip">NT$ 500</span>
                     <span className="preset-chip">NT$ 1,000</span>
                   </div>
+                  <div id="amountHint" className="amount-hint">最低贊助金額為 NT$ 10</div>
                 </div>
       
                 
@@ -1246,10 +1274,53 @@ export default function DonatePage() {
               
               <div className="yt-section">
                 <div className="yt-label">連結帳號以查看贊助紀錄</div>
-                <a className="btn-yt" href="#">
-                  <div className="yt-icon"></div>
-                  <span className="yt-text">以 YouTube 帳號登入</span>
-                </a>
+                {session ? (
+                  <div className="btn-yt" style={{ cursor: 'default', gap: '10px' }}>
+                    {session.user?.image && (
+                      <img
+                        src={session.user.image}
+                        alt={session.user.name ?? ''}
+                        style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }}
+                      />
+                    )}
+                    <span className="yt-text" style={{ flex: 1 }}>{session.user?.name}</span>
+                    <a
+                      href="/donations"
+                      style={{
+                        color: 'rgba(180,140,60,0.85)',
+                        fontSize: '0.75rem',
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      贊助紀錄
+                    </a>
+                    <button
+                      onClick={() => signOut()}
+                      style={{
+                        background: 'none',
+                        border: '1px solid rgba(180,140,60,0.4)',
+                        borderRadius: '4px',
+                        color: '#8a7a6a',
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      登出
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn-yt" onClick={() => signIn('google')}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span className="yt-text">以 Google 帳號登入</span>
+                  </button>
+                )}
               </div>
       
               </div>
@@ -1280,10 +1351,11 @@ export default function DonatePage() {
               <li><span className="info-glyph">✦</span> <strong>羽毛筆</strong> ── 請勿輕易點擊，它有自己的打算</li>
               <li><span className="info-glyph">✦</span> <strong>守護者</strong> ── 守在這裡很久了，偶爾願意說話</li>
               <li><span className="info-glyph">✦</span> <strong>香爐</strong> ── 靠近可聞得煙香，點擊傳遞心意</li>
+              <li><span className="info-glyph">✦</span> <strong>卷軸標題列</strong> ── 點擊可收起或展開贊助表單</li>
             </ul>
             <div className="info-card-divider"></div>
             <div className="info-card-footer">
-              <p>連結 YouTube 帳號以累積贊助足跡，並查閱歷次贊助紀錄。</p>
+              <p>連結 Google 帳號以累積贊助足跡，可在「贊助紀錄」頁面查閱歷次紀錄。</p>
               <p className="info-card-contact">問題與委託：<a href="mailto:wuyan1234yyy@gmail.com">wuyan1234yyy@gmail.com</a></p>
             </div>
           </div>
