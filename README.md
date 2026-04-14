@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 魔法書房 — 贊助前端
 
-## Getting Started
+魔法書房（Magic Library）的贊助頁面前端，使用 Next.js 開發，串接綠界（ECPay）金流與 Google OAuth 登入。
 
-First, run the development server:
+## 功能
+
+- Google 帳號登入（NextAuth.js）
+- 綠界 ECPay 捐款表單（支援信用卡、超商代碼等）
+- 個人贊助紀錄查詢（需登入）
+- 付款結果頁面
+- 魔法風格 UI（粒子特效、Canvas 動畫）
+
+## 技術棧
+
+| 項目 | 版本 |
+|------|------|
+| Next.js | 16 |
+| React | 19 |
+| TypeScript | 5 |
+| Tailwind CSS | 4 |
+| NextAuth.js | 5 (beta) |
+
+## 快速開始
+
+### 1. 安裝依賴
+
+```bash
+npm install
+```
+
+### 2. 設定環境變數
+
+複製 `.env.example` 並填入實際值：
+
+```bash
+cp .env.example .env.local
+```
+
+| 變數 | 說明 |
+|------|------|
+| `GOOGLE_CLIENT_ID` | Google OAuth 用戶端 ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 用戶端密鑰 |
+| `AUTH_SECRET` | NextAuth 加密密鑰（執行 `npx auth secret` 產生）|
+| `NEXT_PUBLIC_API_URL` | 後端 API 根網址（例如 Railway 部署網址）|
+| `INTERNAL_SECRET` | 前後端內部驗證密鑰（須與後端設定一致）|
+
+**Google OAuth 設定：**
+1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
+2. 建立 OAuth 2.0 用戶端憑證
+3. 在「已授權的重新導向 URI」加入：
+   - 開發：`http://localhost:3000/api/auth/callback/google`
+   - 正式：`https://your-domain.com/api/auth/callback/google`
+
+### 3. 啟動開發伺服器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+開啟 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 頁面路由
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 路由 | 說明 |
+|------|------|
+| `/` | 首頁（自動導向 `/donate`）|
+| `/donate` | 贊助表單主頁 |
+| `/donations` | 個人贊助紀錄（需登入）|
+| `/order-result` | 付款完成結果頁 |
 
-## Learn More
+## 部署
 
-To learn more about Next.js, take a look at the following resources:
+本專案可部署至 Vercel 或任何支援 Node.js 的平台。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> 部署前請在平台的環境變數設定中填入 `.env.example` 所列的所有變數。
 
-## Deploy on Vercel
+## 相關專案
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+本前端需搭配後端 API 使用，後端負責：
+- 串接綠界 ECPay 建立訂單
+- 接收 ECPay 付款結果 Webhook
+- 提供贊助紀錄查詢 API
+- JWT 身份驗證
