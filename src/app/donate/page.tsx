@@ -1016,6 +1016,16 @@ export default function DonatePage() {
       setTimeout(() => el.remove(), 4300);
     });
 
+    /* ── 互動提示：點擊後消失 ── */
+    const hint = document.getElementById('interactHint');
+    if (hint) {
+      hint.addEventListener('click', () => {
+        hint.style.animation = 'none';
+        hint.style.opacity = '0';
+        hint.style.pointerEvents = 'none';
+      });
+    }
+
     return () => {
       if (typeof _animId !== 'undefined') cancelAnimationFrame(_animId);
       if (urnSmokeInterval) clearInterval(urnSmokeInterval);
@@ -1163,7 +1173,7 @@ export default function DonatePage() {
             <div className="scene-tooltip">羽毛筆</div>
           </div>
           
-          <div className="scene-obj deco-obj" id="obj-bookopen" style={{left: '40.30%', top: '75.32%', width: '33.85%', height: '18.09%', cursor: 'pointer', pointerEvents: 'all', zIndex: 20}}>
+          <div className="scene-obj deco-obj" id="obj-bookopen" style={{left: '40.30%', top: '75.32%', width: '33.85%', height: '18.09%', cursor: 'pointer', pointerEvents: 'all', zIndex: 3}}>
             <img src="/assets/open-book.png" alt="攤開的書" />
           </div>
 
