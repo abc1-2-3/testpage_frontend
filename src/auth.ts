@@ -1,14 +1,13 @@
 import NextAuth, { type DefaultSession } from "next-auth"
 import Google from "next-auth/providers/google"
+import { prisma } from "@/lib/prisma"
 
 declare module "next-auth" {
   interface Session {
-    token: string
     userId: string
     user: DefaultSession["user"]
   }
 }
-
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -20,43 +19,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Internal-Secret": process.env.INTERNAL_SECRET ?? "",
-            },
-            body: JSON.stringify({
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              googleId: account?.providerAccountId,
-            }),
-          }
-        )
-        if (!res.ok) return false
-        const data = (await res.json()) as { token: string; userId: string }
-        ;(user as Record<string, unknown>).backendToken = data.token
-        ;(user as Record<string, unknown>).userId = data.userId
-        return true
+        const dbUser = await prisma.user.upsert({
+          where: { email: user.email! },
+          update: {
+            name: user.name,
+            image: user.image,
+            googleId: account?.providerAccountId,
+          },
+          create: {
+            email: user.email!,
+            name: user.name,
+            image: user.image,
+            googleId: account?.providerAccountId,
+          },
+        });
+        (user as Record<string, unknown>).dbUserId = dbUser.id;
+        return true;
       } catch {
-        return false
+        return false;
       }
     },
     async jwt({ token, user }) {
       if (user) {
-        const u = user as Record<string, unknown>
-        token.backendToken = u.backendToken as string
-        token.userId = u.userId as string
+        token.dbUserId = (user as Record<string, unknown>).dbUserId as string;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
-      session.token = (token.backendToken as string) ?? ""
-      session.userId = (token.userId as string) ?? ""
-      return session
+      session.userId = (token.dbUserId as string) ?? "";
+      return session;
     },
   },
 })

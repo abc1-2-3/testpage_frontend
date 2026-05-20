@@ -436,8 +436,16 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 1.2rem 1.5rem 1.2rem 0;
+  padding: 1.2rem 1.5rem 27vh 0;
   pointer-events: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 90, 30, 0.25) transparent;
+}
+.form-overlay::-webkit-scrollbar { width: 4px; }
+.form-overlay::-webkit-scrollbar-thumb {
+  background: rgba(120, 90, 30, 0.25);
+  border-radius: 2px;
 }
 .form-overlay > * {
   pointer-events: all;
@@ -1546,6 +1554,7 @@ html, body {
     padding: 2rem 1rem 2rem;
     pointer-events: all;
     align-items: flex-start;
+    overflow-y: visible;
   }
 
   /* 羊皮紙：全寬，移除 clamp 下限限制 */
@@ -1753,6 +1762,48 @@ html, body {
   .field-textarea { font-size: 1.1rem; padding: 0.58rem 0.8rem; }
   .amount-prefix  { font-size: 0.95rem; }
   .btn-submit     { font-size: 1.05rem; padding: 0.7rem 1.5rem; }
+}
+
+/* ─── 互動提示（桌機） ─── */
+#interactHint {
+  position: absolute;
+  left: 25%;
+  bottom: 28%;
+  transform: translateX(-50%);
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: rgba(240, 210, 140, 0.9);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 15;
+  text-shadow: 0 0 14px rgba(200, 150, 40, 0.7), 0 1px 4px rgba(0,0,0,0.9);
+  opacity: 0;
+  animation: hintAppear 7s ease forwards;
+  animation-delay: 1.8s;
+}
+@keyframes hintAppear {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  72%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  #interactHint { display: none; }
+}
+
+/* 規則書初始吸引動畫 — 延遲 1.5s 後閃爍 3 次（共約 8s 後結束） */
+@keyframes rulebookAttract {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(200, 168, 76, 0.3)) brightness(1); }
+  50%       { filter: drop-shadow(0 0 24px rgba(200, 168, 76, 0.75)) brightness(1.18); }
+}
+#obj-bookopen {
+  animation: rulebookAttract 2.2s ease-in-out 3;
+  animation-delay: 1.5s;
+}
+#obj-bookopen:hover {
+  animation: none;
+  filter: drop-shadow(0 0 14px rgba(200, 168, 76, 0.55)) brightness(1.08);
 }
 
 /* ─── 社群圖示 ─── */

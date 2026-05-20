@@ -27,14 +27,13 @@ export default function OrderResult() {
       return;
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     let attempts = 0;
     const MAX = 10;
     let timerId: ReturnType<typeof setTimeout>;
 
     async function poll() {
       try {
-        const res = await fetch(`${apiUrl}/api/Ecpay/status/${merchantTradeNo}`);
+        const res = await fetch(`/api/ecpay/status/${merchantTradeNo}`);
         if (!res.ok) throw new Error('fetch failed');
         const json: OrderStatus = await res.json();
         if (json.status === 'Pending' && attempts < MAX) {

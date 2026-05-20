@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"d:/GitLab/testpage_frontend/src/app/api/ecpay/create-order\" \"d:/GitLab/testpage_frontend/src/app/api/ecpay/notify\" \"d:/GitLab/testpage_frontend/src/app/api/ecpay/recent\" \"d:/GitLab/testpage_frontend/src/app/api/ecpay/my-donations\" \"d:/GitLab/testpage_frontend/src/app/api/ecpay/status/[orderId]\")",
+      "Bash(npx prisma *)",
+      "Bash(DATABASE_URL=\"postgresql://dummy:dummy@localhost:5432/dummy\" npx prisma generate)",
+      "Bash(npx tsc *)"
+    ],
+    "additionalDirectories": [
+      "d:\\GitLab\\testpage_frontend\\src\\app\\api\\ecpay\\status"
+    ]
+  }
+}

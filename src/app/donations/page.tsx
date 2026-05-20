@@ -49,18 +49,10 @@ export default function DonationsPage() {
   useEffect(() => {
     if (status !== 'authenticated') return;
 
-    const token = (session as any).token as string | undefined;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
     setLoading(true);
     setError(false);
 
-    fetch(`${apiUrl}/api/ecpay/my-donations?page=${page}&pageSize=${PAGE_SIZE}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    })
+    fetch(`/api/ecpay/my-donations?page=${page}&pageSize=${PAGE_SIZE}`)
       .then(res => {
         if (!res.ok) throw new Error('fetch failed');
         return res.json();

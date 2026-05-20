@@ -569,14 +569,9 @@ export default function DonatePage() {
       btnSubmit.style.pointerEvents = 'none';
       try {
         const inputMsg = document.getElementById('inputMsg');
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:44333';
-        const token = sessionRef.current?.token;
-        const res = await fetch(`${apiUrl}/api/ecpay/create-order`, {
+        const res = await fetch('/api/ecpay/create-order', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: parseInt(inputAmount.value, 10),
             donorName: inputName.value.trim(),
@@ -1171,8 +1166,9 @@ export default function DonatePage() {
           <div className="scene-obj deco-obj" id="obj-bookopen" style={{left: '40.30%', top: '75.32%', width: '33.85%', height: '18.09%', cursor: 'pointer', pointerEvents: 'all', zIndex: 20}}>
             <img src="/assets/open-book.png" alt="攤開的書" />
           </div>
-      
-          
+
+          <div id="interactHint">✦ 試試點擊書本 ✦</div>
+
         <div className="form-overlay">
           <div className="parchment-wrap">
             <div className="parchment">
